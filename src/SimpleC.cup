@@ -1,0 +1,96 @@
+
+import java_cup.runtime.*;
+import java.util.*;
+
+
+parser code {: 
+
+public void syntax_error(Symbol curToken) {
+    if (curToken.value == null) {
+       Errors.fatal(0,0, "SYNTAX ERROR at end of file");
+    }
+    else { 
+       MySymbol cur = (MySymbol)curToken;
+       Errors.fatal(cur.getLine(), cur.getColumn(),
+            "SYNTAX ERROR while reading token " + ((Scanner)this.getScanner()).getTokName(cur.sym) + " ("+ ((Scanner)this.getScanner()).yytext() + ")");
+    } 
+    System.exit(-1);
+} 
+
+public void missing_character(char c)
+{
+	MySymbol cur = (MySymbol)cur_token;
+    Errors.fatal(cur.getLine(), cur.getColumn() , "Syntax error: missing '" + c + "' before token " + ((Scanner)this.getScanner()).getTokName(cur.sym) + " ("+ ((Scanner)this.getScanner()).yytext() + ")"); 
+    System.exit(-1);
+}
+
+:};
+
+
+/* Terminals */
+
+
+terminal Integer    INTLITERAL;
+terminal            LPAREN;
+terminal            RPAREN;
+terminal            SEMICOLON;
+terminal            PLUS;
+terminal            MINUS;
+terminal            TIMES;
+terminal            DIVIDE;
+terminal            PERIOD;
+terminal 			ABS;
+
+/* Nonterminals */
+non terminal Program program;
+non terminal ExprList exprlist;
+non terminal OneExprList oneexprlist;
+non terminal MoreExprList moreexprlist;
+non terminal Expr expr;
+non terminal Term term;
+non terminal Factor factor;
+
+
+
+
+precedence left PLUS, MINUS;
+precedence left TIMES, DIVIDE;
+precedence left LPAREN;
+
+start with program; 
+
+/*
+ * grammar with actions
+ */
+ 
+program ::= exprlist: el PERIOD {: RESULT = new Program(el); :}
+          ;
+exprlist ::= oneexprlist: ol {: RESULT = ol; :}
+			| moreexprlist: ml {: RESULT = ml; :}
+			
+;
+
+oneexprlist ::= expr: e {: RESULT = new OneExprList(e); :}
+;
+
+moreexprlist ::= exprlist: el SEMICOLON expr: e {: RESULT = new MoreExprList(e, el); :}
+;
+
+expr ::= expr: e PLUS term: t {: RESULT = new PlusExpr(e,t); :}
+		| expr: e MINUS term: t {: RESULT = new MinusExpr(e,t); :}
+		| term: t {: RESULT = new OneTerm(t); :}
+;
+
+term ::= term: t TIMES factor: f {: RESULT = new TimesTerm(t,f); :}
+		| term: t DIVIDE factor: f {: RESULT = new DivideTerm(t,f); :}
+		| factor: f {: RESULT = new OneFactor(f); :}
+;
+
+factor ::= INTLITERAL: lit {: RESULT = new NumFactor(lit); :}
+		| LPAREN expr: e RPAREN {: RESULT = new ParenFactor(e); :}
+		| ABS expr: e ABS {: RESULT = new AbsFactor(e); :}
+		| MINUS factor: f {: RESULT = new MinusFactor(f); :}
+		;
+
+
+
